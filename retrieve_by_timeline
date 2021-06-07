@@ -98,4 +98,4 @@ fi
 # it would be possible to substitute in any set of tweets here, provided they're in a JSON array
 
 tweets_json="$tweets_dir"/aggregate.json
-tweet_reformatter "$tweets_json" 
+filter_and_format "$tweets_json" 

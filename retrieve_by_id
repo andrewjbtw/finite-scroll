@@ -57,7 +57,7 @@ get_tweet () {
 		echo "launching new window in 5 seconds"
 		sleep 5
 
-		tweet_reformatter "$thread_json"
+		filter_and_format "$thread_json"
 	fi
 }
 
