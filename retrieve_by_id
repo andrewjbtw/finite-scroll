@@ -1,0 +1,64 @@
+#!/bin/bash
+
+tweet_identifier=$1
+tweets_dir=$2
+
+if [ ! -d "$tweets_dir" ]
+then
+	mkdir -pv "$tweets_dir"
+fi
+
+get_tweet () {
+
+	tweet_url=$1 # any string, preferably a URI, ending in a tweet id string
+
+	tweet_id="$(basename "$tweet_url")"
+	thread_start=${2:-$tweet_id} # until you know the thread root start with the entry point
+
+	echo "current id: $tweet_id"
+	echo "thread start: $thread_start"
+
+	retrieval_dir="$tweets_dir/$thread_start" # to be used for retrieval until root tweet is reached
+	mkdir -pv "$retrieval_dir"
+
+	tweet_json="$retrieval_dir"/$tweet_id.json
+
+
+	# retrieve tweet
+	# TODO: make this less verbose in the future
+	
+	twurl -j "/1.1/statuses/show.json?id=$tweet_id&tweet_mode=extended" > "$tweet_json"
+
+	reply_to=$(cat "$tweet_json" | jq -r '(.in_reply_to_status_id_str // "none")')
+
+	if [ "$reply_to" != "none" ]
+	then
+		echo -e "this tweet is a reply_to: $reply_to\n-----"
+		#less "$tweet_json"
+		get_tweet "$reply_to" "$thread_start"
+	else
+		echo -e "\n\n$tweet_id is the root of the thread"
+
+		# reorganize tweet json to be stored under the root of the thread
+		thread_root="$tweet_id"
+		thread_dir="$tweets_dir/$thread_root"
+		thread_json="$tweets_dir/thread-${tweet_id}".json
+
+		if [ "$thread_root" != "$thread_start" ] 
+		then
+			mkdir -pv "$thread_dir"
+			mv -v "$retrieval_dir"/* "$thread_dir"
+			rmdir -v "$retrieval_dir"
+		fi
+
+		cat "$thread_dir"/*.json | jq -s '. | sort_by(.id_str) | unique_by(.id_str)' | jq . > "$thread_json"
+
+
+		echo "launching new window in 5 seconds"
+		sleep 5
+
+		tweet_reformatter "$thread_json"
+	fi
+}
+
+get_tweet "$tweet_identifier"

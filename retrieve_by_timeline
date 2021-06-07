@@ -1,0 +1,101 @@
+#!/bin/bash
+
+account_owner=$1
+tweets_dir=$2
+
+if [ $# -ne 2 ]
+then
+	echo "Please supply a directory and an account name"
+	exit
+fi
+
+if [ ! -d "$tweets_dir" ]
+then
+	mkdir -pv "$tweets_dir"
+fi
+
+# retrieve the tweets for a timeline
+# syntax is slightly different for the user's home timeline vs. a list
+get_timeline () {
+	slug=$1 # url fragment that identifies the timeline
+
+	count=25 # how far back in the timeline to retrieve (measured in number of tweets)
+
+	tweets_json="$tweets_dir"/"$slug".json
+
+	# determine what the most recently retrieved tweet was for the timeline by looking
+	# at the existing json file, if present
+
+	if [ -f "$tweets_json" ]
+	then
+		continuation_id=$(cat "$tweets_json" | jq '.[0] | .id')
+		if [ "$continuation_id" == "null" ] # TODO: determine if this check is needed now that files are non-empty
+		then
+			since_id=''
+			count=1
+		elif [ -z "$continuation_id" ]
+			then
+			since_id=''
+		else
+			since_id="&since_id=$continuation_id"
+		fi
+	else
+		since_id=''
+	fi
+
+	# this value will be used to limit the retrieval window to avoid re-retrieving
+	# tweets older than the most recently retrieved one
+	# without this limit, retrieving the most recent N number of tweets (the count value)
+	# could result in seeing the same tweets repeatedly if activity is slow or refreshes frequent 
+
+	if [ "$slug" == "home" ]
+		then
+			count=75 # get more tweets from the home timeline
+			tweets=$(twurl -j "/1.1/statuses/home_timeline.json?tweet_mode=extended&count=$count$since_id")
+		else
+			tweets=$(twurl -j "/1.1/lists/statuses.json?slug=$slug&owner_screen_name=$account_owner&tweet_mode=extended&include_rts=false&count=$count$since_id")
+	fi
+
+	# if no new tweets were retrieved, don't create an empty JSON file
+	# instead, carry over the most recent tweet from the previous json file
+	if [ -z "$(echo "$tweets" | jq '.[]')" ]
+	then
+		tweets=$(cat "$tweets_json" | jq '[.[0]]')
+	fi
+
+	# write the new JSON file for for the timeline, overwriting the previous one
+ 	echo "$tweets" | jq . > "$tweets_json"
+}
+
+# refresh the list of lists from the live account so you're always working with current data
+twurl -j "/1.1/lists/list.json?screen_name=${account_owner}" | jq '.' > "$tweets_dir"/.list-slugs.json
+readarray -t slugs < <( jq -r '.[].slug' < "$tweets_dir"/.list-slugs.json )
+
+# allow user to choose whether to retrieve new tweets or continue to read the existing set
+# retrieval will overwrite the existing set with new data
+read -p "Refresh tweets? " refresh
+if [ "$refresh" == "y" ]
+then	
+	echo "refreshing tweets"
+	for slug in "${slugs[@]}" "home"
+	do
+	   get_timeline "$slug"
+	done
+
+	echo "aggregating tweets"
+
+	# remove the old aggregate file so it's not re-aggregated
+	# consider separating the timeline JSON files from the aggregate JSON and retaining an aggregate archive
+	rm "$tweets_dir"/aggregate.json 
+
+	# create the new aggregate JSON by combining each timeline into one file, with deduplication by tweet id
+	# some tweets will have appeared on more than one timeline (usually home + one other)
+	# sorting by id also puts things in chronological order within the set
+	cat "$tweets_dir"/*.json | jq '.[]' | jq -s '. | sort_by(.id_str) | unique_by(.id_str)' | jq . > "$tweets_dir"/aggregate.json
+fi
+
+# filter and format the aggregate json for html viewing.
+# it would be possible to substitute in any set of tweets here, provided they're in a JSON array
+
+tweets_json="$tweets_dir"/aggregate.json
+tweet_reformatter "$tweets_json" 
