@@ -11,48 +11,53 @@ echo "<!DOCTYPE html>
 <body>" > "$tweets_page"
 
 cat "$tweets_json" | 
-jq '.[] | { "text": .full_text, 
-		"user" : .user.name, 
+jq '.[] | { "text": .full_text,
+		"user" : .user.name,
 		"screen_name" : .user.screen_name,
 		"is_reply_to" : ( .in_reply_to_status_id_str // "none" ),
 		"is_quote_tweet" : ( .is_quote_status | tostring ),
 		"quoted_user" : ( .quoted_status.user.name // "none" ),
 		"quoted_screen_name" : ( .quoted_status.user.screen_name // "none" ),
-		"quoted_text" : ( .quoted_status.full_text // "none"), 
+		"quoted_text" : ( .quoted_status.full_text // "none"),
 		"quoted_date" : ( .quoted_status.created_at // "none"),
 		"quoted_link" : ( ( .quoted_status.entities.urls // [{ "expanded_url" : "none" }] | .[].expanded_url ) // "none" ),
-		"tweet_url" : ( "https://www.twitter.com/" + .user.screen_name + "/status/" + .id_str ), 
-		"links" : [ ( .entities.urls[].expanded_url // "none" ) ], 
+		"tweet_url" : ( "https://www.twitter.com/" + .user.screen_name + "/status/" + .id_str ),
+		"links" : [ ( .entities.urls[]?.expanded_url // "none" ) ],
         "media_data": ( .extended_entities // { "media" : [ { "media_url" : "none" , "type" : "none" } ] } | [ .media[] | { "url": ( if .type == "photo" then .media_url else ( .expanded_url // "none" ) end) , "type" : .type } ] ),
 		"date" : .created_at }' |
-	jq '( "<hr><ul><li>user : " + .user + "</li>" ),
-	( "<li>screen name : <a href=\"https://www.twitter.com/" + .screen_name + "/with_replies\">" + .screen_name + "</a></li>"), 
-	( "<li>date : " + .date + "</li>"), 
-	( "<li>tweet: <a href=\"" + .tweet_url + "\">full status</a></li></ul>" ),
-	( if .is_reply_to != "none" then
-		( "<ul><li>this is a reply: <a href=\"" + .tweet_url + "\">retrieve earlier thread</a></li></ul>" )
-	  else empty end),
-	( "<ul><li>text : <blockquote>" + .text + "</blockquote></li></ul>"), 
-	( if .links[0] != "none" then
-		( "<ul>"),
-		( .links[] | ( "<li>link: <a href=\"" + . + "\">" + . + "</a></li>") ),
-		( "</ul>" ) 
-	  else empty end),
-    ( if .media_data[0].type != "none" then 
-    	( "<ul>"),
-    	( .media_data[] | ( "<li>media: <a href=\"" + .url + "\">" + .type + "</a></li>" )), 
-    	( "</ul>")
-	  else empty end ),
-	( if .is_quote_tweet == "true" then
-		( "<p>&nbsp;&nbsp;-----quoted status-----<br>&nbsp;</p>" ),
-		( "<ul><li>quoted user : " + .quoted_user + "</li>"), 
-		( "<li>quoted screen name : <a href=\"https://www.twitter.com/" + .quoted_screen_name + "/with_replies\">" + .quoted_screen_name + "</a></li>"), 
-		( "<li>quoted tweet date : " + .quoted_date + "</li>"), 
-		( if .quoted_link != "none" then
-			( "<li>quoted link: <a href=\"" + .quoted_link + "\">" + .quoted_link + "</a></li>" )
-			else empty end),
-		( "<li>quoted text : <blockquote>" + .quoted_text + "</blockquote></li></ul></p>")
-	  else empty end)' |
+	jq '( "<hr>"),
+	( if .user == null then
+		( "<h1>This tweet could not be retrieved</h1>" )
+		else
+			( "<ul><li>user : " + .user + "</li>" ),
+			( "<li>screen name : <a href=\"https://www.twitter.com/" + .screen_name + "/with_replies\">" + .screen_name + "</a></li>"),
+			( "<li>date : " + .date + "</li>"),
+			( "<li>tweet: <a href=\"" + .tweet_url + "\">full status</a></li></ul>" ),
+			( if .is_reply_to != "none" then
+				( "<ul><li>this is a reply: <a href=\"" + .tweet_url + "\">retrieve earlier thread</a></li></ul>" )
+			  else empty end),
+			( "<ul><li>text : <blockquote>" + .text + "</blockquote></li></ul>"),
+			( if .links[0] != "none" then
+				( "<ul>" ),
+				( .links[] | ( "<li>link: <a href=\"" + . + "\">" + . + "</a></li>") ),
+				( "</ul>" )
+			  else empty end),
+		    ( if .media_data[0].type != "none" then
+				( "<ul>"),
+				( .media_data[] | ( "<li>media: <a href=\"" + .url + "\">" + .type + "</a></li>" )),
+				( "</ul>")
+			  else empty end ),
+			( if .is_quote_tweet == "true" then
+				( "<p>&nbsp;&nbsp;-----quoted status-----<br>&nbsp;</p>" ),
+				( "<ul><li>quoted user : " + .quoted_user + "</li>"),
+				( "<li>quoted screen name : <a href=\"https://www.twitter.com/" + .quoted_screen_name + "/with_replies\">" + .quoted_screen_name + "</a></li>"),
+				( "<li>quoted tweet date : " + .quoted_date + "</li>"),
+				( if .quoted_link != "none" then
+					( "<li>quoted link: <a href=\"" + .quoted_link + "\">" + .quoted_link + "</a></li>" )
+					else empty end),
+				( "<li>quoted text : <blockquote>" + .quoted_text + "</blockquote></li></ul></p>")
+			  else empty end)
+		end )' |
 	  sed -e 's/\\"/slashquote/g' -e 's/\\n/\&nbsp;<br>/g' | tr -d '"' | sed 's/slashquote/"/g' >> "$tweets_page"
 
 # close the tags
