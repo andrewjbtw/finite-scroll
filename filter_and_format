@@ -21,6 +21,7 @@ jq '.[] | { "text": .full_text,
 		"quoted_text" : ( .quoted_status.full_text // "none"),
 		"quoted_date" : ( .quoted_status.created_at // "none"),
 		"quoted_links" : [ ( ( .quoted_status.entities.urls // [{ "expanded_url" : "none" }] | .[]?.expanded_url ) // "none" ) ],
+		"quoted_media" : ( .quoted_status.entities // { "media" : [ { "media_url" : "none" , "type" : "none" } ] } | [ .media[]? | { "url": ( if .type == "photo" then .media_url else ( .expanded_url // "none" ) end) , "type" : .type } ] ),
 		"tweet_url" : ( "https://www.twitter.com/" + .user.screen_name + "/status/" + .id_str ),
 		"links" : [ ( .entities.urls[]?.expanded_url // "none" ) ],
         "media_data": ( .extended_entities // { "media" : [ { "media_url" : "none" , "type" : "none" } ] } | [ .media[] | { "url": ( if .type == "photo" then .media_url else ( .expanded_url // "none" ) end) , "type" : .type } ] ),
@@ -46,7 +47,7 @@ jq '.[] | { "text": .full_text,
 				( "<ul>"),
 				( .media_data[] | ( "<li>media: <a href=\"" + .url + "\">" + .type + "</a></li>" )),
 				( "</ul>")
-			  else empty end ),
+			  else empty end),
 			( if .is_quote_tweet == "true" then
 				( "<p>&nbsp;&nbsp;-----quoted status-----<br>&nbsp;</p>" ),
 				( "<ul><li>quoted user : " + .quoted_user + "</li>"),
@@ -57,8 +58,14 @@ jq '.[] | { "text": .full_text,
 					( .quoted_links[] | ( "<li>quoted link: <a href=\"" + . + "\">" + . + "</a></li>") ),
 					( "</ul>" )
 				else empty end),
-				( "<li>quoted text : <blockquote>" + .quoted_text + "</blockquote></li></ul></p>")
+				( "<li>quoted text : <blockquote>" + .quoted_text + "</blockquote></li></ul></p>"),
+			    ( if .quoted_media[0].type != "none" then
+					( "<ul>"),
+					( .quoted_media[] | ( "<li>quoted media: <a href=\"" + .url + "\">" + .type + "</a></li>" )),
+					( "</ul>")
+			  	else empty end)
 			  else empty end)
+
 		end )' |
 	  sed -e 's/\\"/slashquote/g' -e 's/\\n/\&nbsp;<br>/g' | tr -d '"' | sed 's/slashquote/"/g' >> "$tweets_page"
 
