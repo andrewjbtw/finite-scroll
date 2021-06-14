@@ -50,7 +50,7 @@ get_timeline () {
 
 	if [ "$slug" == "home" ]
 		then
-			count=75 # get more tweets from the home timeline
+			count=50 # get more tweets from the home timeline
 			tweets=$(twurl -j "/1.1/statuses/home_timeline.json?tweet_mode=extended&count=$count$since_id")
 		else
 			tweets=$(twurl -j "/1.1/lists/statuses.json?slug=$slug&owner_screen_name=$account_owner&tweet_mode=extended&include_rts=false&count=$count$since_id")
