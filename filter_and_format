@@ -20,7 +20,7 @@ jq '.[] | { "text": .full_text,
 		"quoted_screen_name" : ( .quoted_status.user.screen_name // "none" ),
 		"quoted_text" : ( .quoted_status.full_text // "none"),
 		"quoted_date" : ( .quoted_status.created_at // "none"),
-		"quoted_link" : ( ( .quoted_status.entities.urls // [{ "expanded_url" : "none" }] | .[].expanded_url ) // "none" ),
+		"quoted_links" : [ ( ( .quoted_status.entities.urls // [{ "expanded_url" : "none" }] | .[]?.expanded_url ) // "none" ) ],
 		"tweet_url" : ( "https://www.twitter.com/" + .user.screen_name + "/status/" + .id_str ),
 		"links" : [ ( .entities.urls[]?.expanded_url // "none" ) ],
         "media_data": ( .extended_entities // { "media" : [ { "media_url" : "none" , "type" : "none" } ] } | [ .media[] | { "url": ( if .type == "photo" then .media_url else ( .expanded_url // "none" ) end) , "type" : .type } ] ),
@@ -52,9 +52,11 @@ jq '.[] | { "text": .full_text,
 				( "<ul><li>quoted user : " + .quoted_user + "</li>"),
 				( "<li>quoted screen name : <a href=\"https://www.twitter.com/" + .quoted_screen_name + "/with_replies\">" + .quoted_screen_name + "</a></li>"),
 				( "<li>quoted tweet date : " + .quoted_date + "</li>"),
-				( if .quoted_link != "none" then
-					( "<li>quoted link: <a href=\"" + .quoted_link + "\">" + .quoted_link + "</a></li>" )
-					else empty end),
+				( if .quoted_links[0] != "none" then
+					( "<ul>" ),
+					( .quoted_links[] | ( "<li>quoted link: <a href=\"" + . + "\">" + . + "</a></li>") ),
+					( "</ul>" )
+				else empty end),
 				( "<li>quoted text : <blockquote>" + .quoted_text + "</blockquote></li></ul></p>")
 			  else empty end)
 		end )' |
