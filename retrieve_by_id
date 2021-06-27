@@ -35,6 +35,7 @@ get_tweet () {
 	then
 		echo -e "this tweet is a reply_to: $reply_to\n-----"
 		#less "$tweet_json"
+		sleep 1
 		get_tweet "$reply_to" "$thread_start"
 	else
 		echo -e "\n\n$tweet_id is the root of the thread"
