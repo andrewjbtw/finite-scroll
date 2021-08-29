@@ -13,12 +13,12 @@ get_tweet () {
 	tweet_url=$1 # any string, preferably a URI, ending in a tweet id string
 
 	tweet_id="$(basename "$tweet_url")"
-	thread_start=${2:-$tweet_id} # until you know the thread root start with the entry point
+	thread_entry=${2:-$tweet_id} # until you know the thread root start with the entry point
 
 	echo "current id: $tweet_id"
-	echo "thread start: $thread_start"
+	echo "thread entry point: $thread_entry"
 
-	retrieval_dir="$tweets_dir/$thread_start" # to be used for retrieval until root tweet is reached
+	retrieval_dir="$tweets_dir/$thread_entry" # to be used for retrieval until root tweet is reached
 	mkdir -pv "$retrieval_dir"
 
 	tweet_json="$retrieval_dir"/$tweet_id.json
@@ -36,7 +36,7 @@ get_tweet () {
 		echo -e "this tweet is a reply_to: $reply_to\n-----"
 		#less "$tweet_json"
 		sleep 1
-		get_tweet "$reply_to" "$thread_start"
+		get_tweet "$reply_to" "$thread_entry"
 	else
 		echo -e "\n\n$tweet_id is the root of the thread"
 
@@ -45,7 +45,7 @@ get_tweet () {
 		thread_dir="$tweets_dir/$thread_root"
 		thread_json="$tweets_dir/thread-${tweet_id}".json
 
-		if [ "$thread_root" != "$thread_start" ] 
+		if [ "$thread_root" != "$thread_entry" ] 
 		then
 			mkdir -pv "$thread_dir"
 			mv -v "$retrieval_dir"/* "$thread_dir"
