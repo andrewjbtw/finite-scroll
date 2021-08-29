@@ -1,0 +1,23 @@
+#!/bin/bash
+
+twitter_page=$1
+tweets_dir=$2
+
+if [ -z "$tweets_dir" ]
+then
+	echo "No tweets directory provided. Exiting."
+	exit
+fi
+
+if [ ! -d "$tweets_dir" ]
+then
+	mkdir -pv "$tweets_dir"
+fi
+
+screen_name=$(echo "$twitter_page" | cut -d '/' -f4)
+screen_name_json="$tweets_dir/$screen_name".json
+tweets=$(twurl "/1.1/statuses/user_timeline.json?screen_name=${screen_name}&tweet_mode=extended&count=30")
+
+echo "$tweets" | jq . > "$screen_name_json"
+
+filter_and_format "$screen_name_json"
