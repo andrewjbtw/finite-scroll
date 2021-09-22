@@ -1,5 +1,5 @@
 # finite scroll
-Reading and saving saving tweets in text
+A way to read just a subset of recent tweets in a text-based browser 
 
 # Description
 Some tools for downloading, reading, and saving tweets from the command-line.
