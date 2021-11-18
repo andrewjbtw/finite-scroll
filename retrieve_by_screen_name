@@ -16,7 +16,7 @@ fi
 
 screen_name=$(echo "$twitter_page" | cut -d '/' -f4)
 screen_name_json="$tweets_dir/$screen_name".json
-tweets=$(twurl "/1.1/statuses/user_timeline.json?screen_name=${screen_name}&tweet_mode=extended&include_rts=false&count=30")
+tweets=$(twurl "/1.1/statuses/user_timeline.json?screen_name=${screen_name}&tweet_mode=extended&include_rts=false&count=50")
 
 echo "$tweets" | jq . > "$screen_name_json"
 
